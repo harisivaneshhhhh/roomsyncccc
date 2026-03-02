@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RoomSync</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📁</text></svg>"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --surface2: #f0f0f5;
+      --border: #e0e0e8;
+      --accent: #6c63ff;
+      --accent2: #5549e0;
+      --text: #111118;
+      --text2: #666680;
+      --text3: #aaaacc;
+      --green: #1db954;
+      --red: #ff3344;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── CUSTOM POPUP ─────────────────────────── */
+    #popupOverlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.3);
+      display: none; align-items: center;
+      justify-content: center; z-index: 9999;
+      backdrop-filter: blur(4px);
+    }
+    #popupOverlay.show { display: flex; }
+
+    .popup-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+      animation: popIn 0.2s ease;
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .popup-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .popup-title { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+    .popup-message { color: var(--text2); font-size: 0.9rem; line-height: 1.5; margin-bottom: 24px; }
+    .popup-btn {
+      background: var(--accent); border: none; color: white;
+      padding: 12px 32px; border-radius: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem; font-weight: 500;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .popup-btn:hover { opacity: 0.85; }
+
+    /* ── LOGIN PAGE ───────────────────────────── */
+    #loginPage {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+    }
+
+    .login-brand {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -1px;
+      margin-bottom: 60px;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 480px;
+      padding: 0 24px;
+      text-align: center;
+    }
+
+    .login-heading {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .login-sub {
+      color: var(--text2);
+      font-size: 0.95rem;
+      font-weight: 300;
+      margin-bottom: 36px;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 16px 20px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      outline: none;
+      text-align: center;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+
+    .login-input:focus { border-color: var(--accent); }
+    .login-input.error { border-color: var(--red); }
+    .login-input::placeholder { color: var(--text3); }
+
+    .login-btn {
+      width: 100%;
+      padding: 16px;
+      background: var(--text);
+      border: none;
+      border-radius: 14px;
+      color: var(--bg);
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+
+    .login-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .login-btn:active { transform: translateY(0); }
+
+    .room-divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 20px 0; color: var(--text3); font-size: 0.85rem;
+    }
+    .room-divider::before, .room-divider::after {
+      content: ''; flex: 1;
+      height: 1px; background: var(--border);
+    }
+
+    .room-join-btn {
+      width: 100%;
+      padding: 16px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .room-join-btn:hover { border-color: var(--accent); background: rgba(108,99,255,0.05); }
+
+    .room-error {
+      color: var(--red);
+      font-size: 0.85rem;
+      margin-top: 10px;
+      min-height: 20px;
+    }
+
+    /* ── MAIN APP ─────────────────────────────── */
+    #mainApp {
+      display: none;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .topbar-brand {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+
+    .topbar-info {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .info-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+    }
+
+    .info-chip span:first-child { color: var(--text2); }
+    .info-chip span:last-child { color: var(--text); font-weight: 500; }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      transition: background 0.3s;
+    }
+    .status-dot.connected { background: var(--green); }
+
+    .topbar-actions { display: flex; align-items: center; gap: 12px; }
+
+    .icon-btn {
+      width: 38px; height: 38px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: border-color 0.2s, background 0.2s;
+      color: var(--text2);
+    }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(108,99,255,0.08); }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: 320px 1fr 340px;
+      gap: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .panel {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel:last-child { border-right: none; }
+
+    .panel-header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text3);
+      flex-shrink: 0;
+    }
+
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .panel-body::-webkit-scrollbar { width: 4px; }
+    .panel-body::-webkit-scrollbar-track { background: transparent; }
+    .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── LEFT PANEL ───────────────────────────── */
+    .dropzone {
+      border: 1.5px dashed var(--border);
+      border-radius: 16px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(108,99,255,0.04);
+    }
+
+    .dropzone-icon { font-size: 2.2rem; margin-bottom: 10px; }
+
+    .dropzone-text {
+      color: var(--text2);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .dropzone-text u {
+      color: var(--accent2);
+      cursor: pointer;
+      text-decoration-color: rgba(108,99,255,0.4);
+    }
+
+    .file-manager { display: none; }
+
+    .file-manager-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .file-manager-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text3);
+      font-weight: 600;
+    }
+
+    .add-more-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--accent2);
+      padding: 4px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-family: 'DM Sans', sans-serif;
+      transition: border-color 0.2s;
+    }
+    .add-more-btn:hover { border-color: var(--accent); }
+
+    .file-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+
+    .file-item {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      border-radius: 12px;
+    }
+
+    .file-item-icon { font-size: 1.4rem; }
+
+    .file-item-info { flex: 1; min-width: 0; }
+    .file-item-name { font-size: 0.85rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-item-size { font-size: 0.75rem; color: var(--text3); margin-top: 2px; }
+
+    .remove-btn {
+      background: none; border: none;
+      color: var(--red); cursor: pointer;
+      font-size: 1rem; padding: 4px;
+      border-radius: 6px; opacity: 0.6;
+      transition: opacity 0.15s;
+      flex-shrink: 0;
+    }
+    .remove-btn:hover { opacity: 1; }
+
+    .file-manager-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .total-size { font-size: 0.8rem; color: var(--text3); }
+
+    .share-btn {
+      background: var(--accent);
+      border: none; color: white;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem; font-weight: 500;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .share-btn:hover { opacity: 0.85; }
+
+    .progress-container {
+      display: none;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 12px;
+    }
+
+    .progress-header {
+      display: flex; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .progress-label { font-size: 0.82rem; color: var(--text2); }
+    .progress-speed { font-size: 0.82rem; color: var(--accent2); }
+
+    .progress-track {
+      background: var(--border);
+      border-radius: 999px; height: 6px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 999px;
+      transition: width 0.2s;
+    }
+
+    .progress-percent {
+      text-align: right;
+      font-size: 0.75rem;
+      color: var(--text3);
+      margin-top: 6px;
+    }
+
+    /* ── MIDDLE PANEL ─────────────────────────── */
+    .files-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .files-header-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text3);
+    }
+
+    .download-all-btn {
+      display: none;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--accent2);
+      padding: 5px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    .download-all-btn:hover { border-color: var(--accent); background: rgba(108,99,255,0.08); }
+
+    .room-file-item {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 14px 16px;
+      border-radius: 14px;
+      margin-bottom: 10px;
+      transition: border-color 0.2s;
+    }
+    .room-file-item:hover { border-color: var(--accent); }
+
+    .room-file-icon { font-size: 1.8rem; flex-shrink: 0; }
+    .room-file-info { flex: 1; min-width: 0; }
+    .room-file-name { font-size: 0.9rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .room-file-meta { font-size: 0.75rem; color: var(--text3); margin-top: 4px; }
+
+    .dl-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      padding: 7px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-family: 'DM Sans', sans-serif;
+      white-space: nowrap;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .dl-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+    /* ── RIGHT PANEL ──────────────────────────── */
+    .right-panel {
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-section {
+      flex: 1; display: flex; flex-direction: column;
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .chat-empty {
+      color: var(--text3);
+      font-size: 0.85rem;
+      text-align: center;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .msg-wrap {
+      display: flex;
+      flex-direction: column;
+      max-width: 100%;
+    }
+
+    .msg-wrap.me { align-items: flex-end; }
+    .msg-wrap.them { align-items: flex-start; }
+
+    .msg-bubble {
+      max-width: 80%;
+      padding: 9px 13px;
+      border-radius: 14px;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .msg-wrap.me .msg-bubble {
+      background: var(--accent);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg-wrap.them .msg-bubble {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-sender {
+      font-size: 0.72rem;
+      color: var(--accent2);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .msg-time {
+      font-size: 0.68rem;
+      color: var(--text3);
+      margin-top: 4px;
+    }
+
+    .chat-input-bar {
+      display: flex; gap: 8px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .chat-input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 9px 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .chat-input:focus { border-color: var(--accent); }
+    .chat-input::placeholder { color: var(--text3); }
+
+    .chat-send-btn {
+      background: var(--accent);
+      border: none; color: white;
+      padding: 9px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: opacity 0.15s;
+    }
+    .chat-send-btn:hover { opacity: 0.85; }
+
+    .users-section {
+      height: 200px;
+      display: flex; flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .users-body {
+      flex: 1; overflow-y: auto;
+      padding: 12px 16px;
+    }
+
+    .user-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      transition: background 0.15s;
+    }
+    .user-item:hover { background: var(--surface2); }
+
+    .user-avatar {
+      width: 30px; height: 30px;
+      background: rgba(108,99,255,0.2);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .user-online {
+      margin-left: auto;
+      font-size: 0.7rem;
+      color: var(--green);
+    }
+
+    .users-empty {
+      color: var(--text3);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 20px;
+    }
+
+    /* ── HISTORY DRAWER ───────────────────────── */
+    #historyDrawer {
+      position: fixed;
+      top: 0; right: -420px;
+      width: 400px; height: 100vh;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      z-index: 100;
+      transition: right 0.3s ease;
+      display: flex; flex-direction: column;
+    }
+
+    #historyDrawer.open { right: 0; }
+
+    .drawer-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .drawer-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem; font-weight: 700;
+    }
+
+    .drawer-close {
+      background: none; border: none;
+      color: var(--text2); cursor: pointer;
+      font-size: 1.2rem; padding: 4px;
+      transition: color 0.15s;
+    }
+    .drawer-close:hover { color: var(--text); }
+
+    .drawer-body {
+      flex: 1; overflow-y: auto;
+      padding: 16px;
+    }
+
+    .history-item {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+
+    .history-icon { font-size: 1.3rem; }
+    .history-info { flex: 1; min-width: 0; }
+    .history-name { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-meta { font-size: 0.74rem; color: var(--text3); margin-top: 3px; }
+    .history-badge {
+      font-size: 0.7rem; font-weight: 600;
+      padding: 3px 8px; border-radius: 6px;
+      flex-shrink: 0;
+    }
+    .history-badge.sent { background: rgba(108,99,255,0.15); color: var(--accent2); }
+    .history-badge.received { background: rgba(29,185,84,0.12); color: var(--green); }
+
+    .history-empty {
+      color: var(--text3); font-size: 0.85rem;
+      text-align: center; padding: 40px 20px;
+    }
+
+    #drawerOverlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.2);
+      z-index: 99; display: none;
+    }
+    #drawerOverlay.show { display: block; }
+
+    .empty-state {
+      color: var(--text3);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── CUSTOM POPUP ──────────────────────────── -->
+  <div id="popupOverlay">
+    <div class="popup-box">
+      <div class="popup-icon" id="popupIcon">ℹ️</div>
+      <div class="popup-title" id="popupTitle">Notice</div>
+      <div class="popup-message" id="popupMessage"></div>
+      <button class="popup-btn" onclick="closePopup()">Got it</button>
+    </div>
+  </div>
+
+  <!-- ── HISTORY DRAWER ───────────────────────── -->
+  <div id="drawerOverlay" onclick="toggleHistory()"></div>
+  <div id="historyDrawer">
+    <div class="drawer-header">
+      <div class="drawer-title">Transfer History</div>
+      <button class="drawer-close" onclick="toggleHistory()">✕</button>
+    </div>
+    <div class="drawer-body" id="historyList">
+      <div class="history-empty">No transfers yet</div>
+    </div>
+  </div>
+
+  <!-- ── LOGIN PAGE ───────────────────────────── -->
+  <div id="loginPage">
+    <div class="login-brand">RoomSync</div>
+    <div class="login-card">
+
+      <div id="step-username">
+        <h1 class="login-heading">Welcome</h1>
+        <p class="login-sub">Start syncing by entering username</p>
+        <input id="usernameInput" class="login-input" type="text"
+          placeholder="Enter your name..." maxlength="20" autocomplete="off"/>
+        <button class="login-btn" onclick="goToRoomStep()">NEXT</button>
+      </div>
+
+      <div id="step-room" style="display:none;">
+        <h1 class="login-heading">Join a Room</h1>
+        <p class="login-sub">Create a new room or join an existing one</p>
+        <button class="login-btn" onclick="createRoom()">CREATE NEW ROOM</button>
+        <div class="room-divider">or</div>
+        <input id="roomCodeInput" class="login-input" type="text"
+          placeholder="Enter room code..." maxlength="6" autocomplete="off"
+          style="text-transform:uppercase; letter-spacing:4px;"/>
+        <button class="room-join-btn" onclick="joinRoom()">JOIN ROOM</button>
+        <div class="room-error" id="roomError"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── MAIN APP ──────────────────────────────── -->
+  <div id="mainApp">
+
+    <div class="topbar">
+      <div class="topbar-brand">RoomSync</div>
+      <div class="topbar-info">
+        <div class="info-chip">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText">Connecting</span>
+        </div>
+        <div class="info-chip">
+          <span>User</span>
+          <span id="displayUsername">—</span>
+        </div>
+        <div class="info-chip">
+          <span>Room</span>
+          <span id="displayRoomCode">—</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="icon-btn" onclick="toggleHistory()" title="Transfer History">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-grid">
+
+      <!-- LEFT: Upload -->
+      <div class="panel">
+        <div class="panel-header">Upload Files</div>
+        <div class="panel-body">
+
+          <div class="dropzone" id="dropzone">
+            <div class="dropzone-icon">📂</div>
+            <div class="dropzone-text">
+              Drag and Drop or <u onclick="document.getElementById('fileInput').click()">Browse</u> Files
+            </div>
+            <input type="file" id="fileInput" multiple style="display:none;" />
+          </div>
+
+          <div class="file-manager" id="fileManager">
+            <div class="file-manager-header">
+              <div class="file-manager-title">Selected Files</div>
+              <button class="add-more-btn" onclick="document.getElementById('fileInput').click()">+ Add More</button>
+            </div>
+            <div class="file-list" id="fileList"></div>
+            <div class="file-manager-footer">
+              <span class="total-size">Total: <span id="totalSize">0 KB</span></span>
+              <button class="share-btn" onclick="shareToRoom()">Share to Room →</button>
+            </div>
+          </div>
+
+          <div class="progress-container" id="progressContainer">
+            <div class="progress-header">
+              <span class="progress-label" id="progressLabel">Sharing...</span>
+              <span class="progress-speed" id="progressSpeed"></span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="progressBar"></div>
+            </div>
+            <div class="progress-percent" id="progressPercent">0%</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- MIDDLE: Room Files -->
+      <div class="panel">
+        <div class="files-header">
+          <div class="files-header-title">Files shared in Room</div>
+          <button class="download-all-btn" id="downloadAllBtn" onclick="downloadAll()">⬇ Download All (Zip)</button>
+        </div>
+        <div class="panel-body" id="roomFilesList">
+          <div class="empty-state">No files shared yet.<br>Upload files to share with the room.</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Chat + Users -->
+      <div class="right-panel">
+        <div class="chat-section">
+          <div class="panel-header">Chat</div>
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-empty">No messages yet</div>
+          </div>
+          <div class="chat-input-bar">
+            <input type="text" id="chatInput" class="chat-input"
+              placeholder="Type a message..." maxlength="500"/>
+            <button class="chat-send-btn" onclick="sendMessage()">Send</button>
+          </div>
+        </div>
+        <div class="users-section">
+          <div class="panel-header">Connected Users</div>
+          <div class="users-body" id="userList">
+            <div class="users-empty">No other users yet</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let users = {};
+    let selectedFiles = [];
+    let myUsername = '';
+    let myRoomCode = '';
+    let roomKey = '';
+    const downloadBuffers = {};
+    const roomFiles = [];
+    const CHUNK_SIZE = 256 * 1024;
+
+    // ── POPUP ─────────────────────────────────────
+    function showPopup(icon, title, message) {
+      document.getElementById('popupIcon').textContent = icon;
+      document.getElementById('popupTitle').textContent = title;
+      document.getElementById('popupMessage').textContent = message;
+      document.getElementById('popupOverlay').classList.add('show');
+    }
+    function closePopup() {
+      document.getElementById('popupOverlay').classList.remove('show');
+    }
+    document.getElementById('popupOverlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('popupOverlay')) closePopup();
+    });
+
+    // ── HISTORY DRAWER ────────────────────────────
+    function toggleHistory() {
+      document.getElementById('historyDrawer').classList.toggle('open');
+      document.getElementById('drawerOverlay').classList.toggle('show');
+    }
+
+    // ── LOGIN FLOW ────────────────────────────────
+    function goToRoomStep() {
+      const input = document.getElementById('usernameInput').value.trim();
+      if (!input) {
+        document.getElementById('usernameInput').classList.add('error');
+        document.getElementById('usernameInput').placeholder = 'Please enter a name!';
+        return;
+      }
+      myUsername = input;
+      document.getElementById('step-username').style.display = 'none';
+      document.getElementById('step-room').style.display = 'block';
+    }
+
+    document.getElementById('usernameInput').addEventListener('input', () => {
+      document.getElementById('usernameInput').classList.remove('error');
+      document.getElementById('usernameInput').placeholder = 'Enter your name...';
+    });
+    document.getElementById('usernameInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') goToRoomStep();
+    });
+    document.getElementById('roomCodeInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') joinRoom();
+    });
+
+    // FIX 1: chat Enter listener set once at top level, not inside onRoomEntered
+    // (old code added a new listener every time you entered a room → multiple sends per Enter)
+    document.getElementById('chatInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    function createRoom() { socket.emit('create-room', myUsername); }
+
+    function joinRoom() {
+      const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+      if (!code) {
+        document.getElementById('roomError').textContent = 'Please enter a room code!';
+        return;
+      }
+      socket.emit('join-room', { username: myUsername, roomCode: code });
+    }
+
+    function onRoomEntered({ roomCode, roomUsers, key, files }) {
+      myRoomCode = roomCode;
+      roomKey = key;
+      users = roomUsers;
+      document.getElementById('loginPage').style.display = 'none';
+      document.getElementById('mainApp').style.display = 'flex';
+      document.getElementById('displayUsername').textContent = myUsername;
+      document.getElementById('displayRoomCode').textContent = roomCode;
+      renderUsers();
+      if (files && files.length > 0) files.forEach(f => addFileToBoard(f));
+    }
+
+    socket.on('room-created', ({ roomCode, users: roomUsers, roomKey: key }) => {
+      onRoomEntered({ roomCode, roomUsers, key, files: [] });
+    });
+    socket.on('room-joined', ({ roomCode, users: roomUsers, roomKey: key, files }) => {
+      onRoomEntered({ roomCode, roomUsers, key, files });
+    });
+    socket.on('room-error', (message) => {
+      document.getElementById('roomError').textContent = message;
+    });
+
+    // ── CONNECTION ────────────────────────────────
+    socket.on('connect', () => {
+      document.getElementById('statusDot').classList.add('connected');
+      document.getElementById('statusText').textContent = 'Connected';
+    });
+    socket.on('disconnect', () => {
+      document.getElementById('statusDot').classList.remove('connected');
+      document.getElementById('statusText').textContent = 'Disconnected';
+    });
+
+    // ── USER LIST ─────────────────────────────────
+    socket.on('user-joined', ({ id, username }) => { users[id] = { id, username }; renderUsers(); });
+    socket.on('user-left', ({ id }) => { delete users[id]; renderUsers(); });
+
+    function renderUsers() {
+      const list = document.getElementById('userList');
+      const otherUsers = Object.entries(users).filter(([id]) => id !== socket.id);
+      if (otherUsers.length === 0) {
+        list.innerHTML = '<div class="users-empty">No other users yet</div>';
+        return;
+      }
+      list.innerHTML = otherUsers.map(([id, user]) => `
+        <div class="user-item">
+          <div class="user-avatar">👤</div>
+          <span>${escapeHtml(user.username)}</span>
+          <span class="user-online">● Online</span>
+        </div>
+      `).join('');
+    }
+
+    // ── ENCRYPTION ───────────────────────────────
+    async function importKey(hexKey) {
+      const keyBytes = hexToBytes(hexKey);
+      return crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+    }
+    async function encryptFile(arrayBuffer, hexKey) {
+      const key = await importKey(hexKey);
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, arrayBuffer);
+      return { encryptedData: bufferToBase64(encrypted), iv: bufferToBase64(iv) };
+    }
+    async function decryptFile(encryptedBase64, ivBase64, hexKey) {
+      const key = await importKey(hexKey);
+      const encryptedBytes = base64ToBuffer(encryptedBase64);
+      const iv = base64ToBuffer(ivBase64);
+      return crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, encryptedBytes);
+    }
+
+    // ── FILE SELECTION ────────────────────────────
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) handleFileSelected(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        handleFileSelected(fileInput.files);
+        fileInput.value = ''; // FIX 2: reset so same file can be picked again
+      }
+    });
+
+    function handleFileSelected(files) {
+      Array.from(files).forEach(f => {
+        if (!selectedFiles.find(sf => sf.name === f.name)) selectedFiles.push(f);
+      });
+      renderFileManager();
+    }
+
+    function renderFileManager() {
+      const fileManager = document.getElementById('fileManager');
+      const fileList = document.getElementById('fileList');
+      const totalSize = document.getElementById('totalSize');
+
+      if (selectedFiles.length === 0) { fileManager.style.display = 'none'; return; }
+      fileManager.style.display = 'block';
+
+      // FIX 3: use data-index + event listeners instead of inline onclick
+      // so filenames with quotes/special chars don't break JS
+      fileList.innerHTML = selectedFiles.map((file, index) => `
+        <div class="file-item">
+          <div class="file-item-icon">${getFileIcon(file.name)}</div>
+          <div class="file-item-info">
+            <div class="file-item-name">${escapeHtml(file.name)}</div>
+            <div class="file-item-size">${formatSize(file.size)}</div>
+          </div>
+          <button class="remove-btn" data-index="${index}">✕</button>
+        </div>
+      `).join('');
+
+      fileList.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.addEventListener('click', () => removeFile(Number(btn.dataset.index)));
+      });
+
+      totalSize.textContent = formatSize(selectedFiles.reduce((sum, f) => sum + f.size, 0));
+    }
+
+    function removeFile(index) { selectedFiles.splice(index, 1); renderFileManager(); }
+
+    function getFileIcon(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return '🖼️';
+      if (['mp4','avi','mov','mkv'].includes(ext)) return '🎬';
+      if (['mp3','wav','ogg','flac'].includes(ext)) return '🎵';
+      if (['pdf'].includes(ext)) return '📕';
+      if (['doc','docx'].includes(ext)) return '📝';
+      if (['zip','rar','7z'].includes(ext)) return '🗜️';
+      if (['txt'].includes(ext)) return '📄';
+      if (['js','py','java','html','css'].includes(ext)) return '💻';
+      return '📁';
+    }
+
+    // ── SHARE TO ROOM ─────────────────────────────
+    async function shareToRoom() {
+      if (!selectedFiles.length) {
+        showPopup('📂', 'No Files Selected', 'Please select at least one file before sharing.');
+        return;
+      }
+      if (!myRoomCode) {
+        showPopup('🚪', 'Not in a Room', 'Please join a room first.');
+        return;
+      }
+      // FIX 4: snapshot and clear before loop so UI resets immediately
+      const filesToShare = [...selectedFiles];
+      selectedFiles = [];
+      renderFileManager();
+      for (const file of filesToShare) await shareFileToRoom(file);
+    }
+
+    async function shareFileToRoom(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const { encryptedData, iv } = await encryptFile(arrayBuffer, roomKey);
+      const encryptedBuffer = base64ToBuffer(encryptedData);
+      const totalChunks = Math.ceil(encryptedBuffer.byteLength / CHUNK_SIZE);
+      const transferId = Math.random().toString(36).substring(2, 10);
+
+      socket.emit('room-file-init', { filename: file.name, totalChunks, fileSize: file.size, iv, transferId });
+
+      const progressContainer = document.getElementById('progressContainer');
+      const progressBar = document.getElementById('progressBar');
+      const progressLabel = document.getElementById('progressLabel');
+      const progressPercent = document.getElementById('progressPercent');
+      const progressSpeed = document.getElementById('progressSpeed');
+
+      progressContainer.style.display = 'block';
+      progressLabel.textContent = `Sharing "${file.name}"...`;
+      progressBar.style.width = '0%';
+      progressPercent.textContent = '0%';
+      progressSpeed.textContent = '';
+
+      const startTime = Date.now();
+
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, encryptedBuffer.byteLength);
+        const chunk = bufferToBase64(encryptedBuffer.slice(start, end));
+        socket.emit('room-file-chunk', { chunk, chunkIndex: i, transferId });
+        await waitForAck(transferId, i);
+
+        const percent = Math.round((i + 1) / totalChunks * 100);
+        const elapsed = Math.max((Date.now() - startTime) / 1000, 0.001); // FIX 5: no div/0
+        const speed = (end / elapsed / (1024 * 1024)).toFixed(1);
+        progressBar.style.width = percent + '%';
+        progressPercent.textContent = percent + '%';
+        progressSpeed.textContent = speed + ' MB/s';
+      }
+
+      progressLabel.textContent = `✅ "${file.name}" shared!`;
+      progressSpeed.textContent = '';
+      addToHistory({ type: 'sent', filename: file.name, username: 'Room', size: formatSize(file.size) });
+      setTimeout(() => { progressContainer.style.display = 'none'; }, 2000);
+    }
+
+    // FIX 6: use socket.on + manual off instead of socket.once
+    // socket.once resolves on ANY ack, even wrong chunk/transfer → corrupts multi-chunk files
+    function waitForAck(transferId, chunkIndex) {
+      return new Promise((resolve) => {
+        const handler = ({ transferId: tid, chunkIndex: ci }) => {
+          if (tid === transferId && ci === chunkIndex) {
+            socket.off('chunk-ack', handler);
+            resolve();
+          }
+        };
+        socket.on('chunk-ack', handler);
+      });
+    }
+
+    // ── ROOM FILES BOARD ──────────────────────────
+    socket.on('room-file-available', (fileInfo) => {
+      addFileToBoard(fileInfo);
+      // FIX 7: only mark as received in history if someone ELSE shared it
+      if (fileInfo.fromId !== socket.id) {
+        addToHistory({ type: 'received', filename: fileInfo.filename, username: fileInfo.fromName, size: formatSize(fileInfo.fileSize) });
+      }
+    });
+
+    function addFileToBoard({ fileId, filename, fileSize, fromName, time }) {
+      const list = document.getElementById('roomFilesList');
+      const empty = list.querySelector('.empty-state');
+      if (empty) empty.remove();
+
+      roomFiles.push({ fileId, filename, fileSize, fromName, time });
+      if (roomFiles.length > 1) document.getElementById('downloadAllBtn').style.display = 'block';
+
+      const item = document.createElement('div');
+      item.className = 'room-file-item';
+      // FIX 8: use data attributes + addEventListener for download button
+      // so filenames with quotes don't break the onclick string
+      item.innerHTML = `
+        <div class="room-file-icon">${getFileIcon(filename)}</div>
+        <div class="room-file-info">
+          <div class="room-file-name">${escapeHtml(filename)}</div>
+          <div class="room-file-meta">${formatSize(fileSize)} · ${escapeHtml(fromName)} · ${time}</div>
+        </div>
+        <button class="dl-btn">⬇ Download</button>
+      `;
+      item.querySelector('.dl-btn').addEventListener('click', () => downloadFile(fileId, filename));
+      list.insertBefore(item, list.firstChild);
+    }
+
+    // ── DOWNLOAD SINGLE ───────────────────────────
+    function downloadFile(fileId, filename) {
+      downloadBuffers[fileId] = { chunks: [], received: 0, totalChunks: 0, filename, iv: '' };
+      socket.emit('download-file', { fileId });
+    }
+
+    socket.on('download-start', ({ fileId, totalChunks, iv }) => {
+      const dl = downloadBuffers[fileId];
+      if (!dl) return;
+      dl.chunks = new Array(totalChunks);
+      dl.totalChunks = totalChunks;
+      dl.iv = iv;
+    });
+
+    socket.on('download-chunk', async ({ chunk, chunkIndex, fileId }) => {
+      const dl = downloadBuffers[fileId];
+      if (!dl) return;
+      dl.chunks[chunkIndex] = chunk;
+      dl.received++;
+      if (dl.received === dl.totalChunks) {
+        const decrypted = await assembleAndDecrypt(dl.chunks, dl.iv);
+        if (decrypted) {
+          triggerDownload(decrypted, dl.filename);
+          addToHistory({ type: 'received', filename: dl.filename, username: 'Room', size: formatSize(decrypted.byteLength) });
+        }
+        delete downloadBuffers[fileId];
+      }
+    });
+
+    // ── DOWNLOAD ALL AS ZIP ───────────────────────
+    async function downloadAll() {
+      if (roomFiles.length === 0) return;
+      const btn = document.getElementById('downloadAllBtn');
+      btn.disabled = true;
+      const zip = new JSZip();
+      for (const file of roomFiles) {
+        btn.textContent = `⏳ ${file.filename}...`;
+        const buffer = await fetchFileBuffer(file.fileId);
+        if (buffer) zip.file(file.filename, buffer);
+      }
+      btn.textContent = '⏳ Generating...';
+      const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+      triggerDownload(zipBlob, `RoomSync-${myRoomCode}.zip`);
+      btn.textContent = '⬇ Download All (Zip)';
+      btn.disabled = false;
+    }
+
+    // Silently fetch + decrypt — no download triggered
+    function fetchFileBuffer(fileId) {
+      return new Promise((resolve) => {
+        let chunks = [], totalChunks = 0, received = 0, iv = '';
+
+        const onStart = ({ fileId: fid, totalChunks: tc, iv: fileIv }) => {
+          if (fid !== fileId) return;
+          totalChunks = tc; iv = fileIv;
+        };
+
+        const onChunk = async ({ chunk, chunkIndex, fileId: fid }) => {
+          if (fid !== fileId) return;
+          chunks[chunkIndex] = chunk;
+          received++;
+          // FIX 9: guard totalChunks > 0 so we don't resolve before download-start arrives
+          if (totalChunks > 0 && received === totalChunks) {
+            socket.off('download-start', onStart);
+            socket.off('download-chunk', onChunk);
+            const decrypted = await assembleAndDecrypt(chunks, iv);
+            resolve(decrypted);
+          }
+        };
+
+        socket.on('download-start', onStart);
+        socket.on('download-chunk', onChunk);
+        socket.emit('download-file', { fileId });
+      });
+    }
+
+    // ── SHARED HELPERS ────────────────────────────
+    async function assembleAndDecrypt(chunks, iv) {
+      try {
+        const buffers = chunks.map(c => base64ToBuffer(c));
+        const totalLength = buffers.reduce((sum, b) => sum + b.byteLength, 0);
+        const combined = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const buf of buffers) { combined.set(new Uint8Array(buf), offset); offset += buf.byteLength; }
+        return await decryptFile(bufferToBase64(combined.buffer), iv, roomKey);
+      } catch {
+        showPopup('❌', 'Decryption Failed', 'Could not decrypt the file. The encryption key may have changed.');
+        return null;
+      }
+    }
+
+    function triggerDownload(data, filename) {
+      const blob = data instanceof Blob ? data : new Blob([data]);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000); // FIX 10: free memory after download
+    }
+
+    // ── CHAT ─────────────────────────────────────
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      if (!message || !myRoomCode) return;
+      socket.emit('chat-message', { roomCode: myRoomCode, message });
+      input.value = '';
+    }
+
+    socket.on('chat-message', ({ from, fromName, message, time }) => {
+      const isMe = from === socket.id;
+      const chatMessages = document.getElementById('chatMessages');
+      const empty = chatMessages.querySelector('.chat-empty');
+      if (empty) empty.remove();
+
+      const wrap = document.createElement('div');
+      wrap.className = `msg-wrap ${isMe ? 'me' : 'them'}`;
+
+      if (!isMe) {
+        const sender = document.createElement('div');
+        sender.className = 'msg-sender';
+        sender.textContent = fromName; // FIX 11: textContent not innerHTML → prevents XSS
+        wrap.appendChild(sender);
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble';
+      bubble.textContent = message; // FIX 11: textContent → no XSS from malicious messages
+      wrap.appendChild(bubble);
+
+      const timeEl = document.createElement('div');
+      timeEl.className = 'msg-time';
+      timeEl.textContent = time;
+      wrap.appendChild(timeEl);
+
+      chatMessages.appendChild(wrap);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+
+    // ── TRANSFER HISTORY ──────────────────────────
+    function addToHistory({ type, filename, username, size }) {
+      const historyList = document.getElementById('historyList');
+      const empty = historyList.querySelector('.history-empty');
+      if (empty) empty.remove();
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const isSent = type === 'sent';
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.innerHTML = `
+        <div class="history-icon">${isSent ? '📤' : '📥'}</div>
+        <div class="history-info">
+          <div class="history-name">${escapeHtml(filename)}</div>
+          <div class="history-meta">${isSent ? 'Shared to' : 'From'} ${escapeHtml(username)} · ${size} · ${time}</div>
+        </div>
+        <div class="history-badge ${isSent ? 'sent' : 'received'}">${isSent ? 'SHARED' : 'RECEIVED'}</div>
+      `;
+      historyList.insertBefore(item, historyList.firstChild);
+    }
+
+    // ── UTILITIES ─────────────────────────────────
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function hexToBytes(hex) {
+      const bytes = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < hex.length; i += 2) bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+      return bytes;
+    }
+    function bufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    }
+    function base64ToBuffer(base64) {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes.buffer;
+    }
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+  </script>
+</body>
+</html>
