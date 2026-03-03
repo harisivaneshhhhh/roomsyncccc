@@ -10,6 +10,11 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, '../client')));
 
+// ── CHANGE 1: Use Render's dynamic PORT ──────────
+// Render assigns a random port via process.env.PORT
+// If we hardcode 3000 it won't work on Render
+const PORT = process.env.PORT || 3000;
+
 const rooms = {};
 const pendingUploads = {};
 
@@ -20,7 +25,7 @@ function generateRoomCode() {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  // Create room — generate a shared AES key for the whole room
+  // Create room
   socket.on('create-room', (username) => {
     const roomCode = generateRoomCode();
     const roomKey = crypto.randomBytes(32).toString('hex');
@@ -33,7 +38,7 @@ io.on('connection', (socket) => {
     console.log(`${username} created room ${roomCode}`);
   });
 
-  // Join room — receive the room key and existing files
+  // Join room
   socket.on('join-room', ({ username, roomCode }) => {
     const room = rooms[roomCode];
     if (!room) {
@@ -50,7 +55,8 @@ io.on('connection', (socket) => {
       roomKey: room.key,
       files: room.files.map(f => ({
         fileId: f.fileId, filename: f.filename,
-        fileSize: f.fileSize, fromName: f.fromName, time: f.time
+        fileSize: f.fileSize, fromName: f.fromName,
+        fromId: f.fromId, time: f.time
       }))
     });
     socket.to(roomCode).emit('user-joined', { id: socket.id, username });
@@ -87,9 +93,11 @@ io.on('connection', (socket) => {
       if (rooms[roomCode]) {
         rooms[roomCode].files.push({ fileId, filename, fileSize, iv, fromId, fromName, chunks, time });
 
-        // Tell everyone in the room a new file is available
+        // ── CHANGE 2: Added fromId to the emit ───────
+        // Client needs fromId to check if they are the sender
+        // so history doesn't show "received" for your own file
         io.to(roomCode).emit('room-file-available', {
-          fileId, filename, fileSize, fromName, time
+          fileId, filename, fileSize, fromId, fromName, time
         });
       }
 
@@ -98,7 +106,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Someone wants to download a file
+  // Download file
   socket.on('download-file', ({ fileId }) => {
     const room = rooms[socket.roomCode];
     if (!room) return;
@@ -141,6 +149,22 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(3000, () => {
-  console.log('Server running at http://localhost:3000');
+// ── CHANGE 3: Self-ping to prevent Render sleeping ──
+// Render free tier sleeps after 15min of inactivity
+// This pings the server every 10min to keep it awake
+// Replace YOUR-APP-NAME with your actual Render URL after deploying
+const APP_URL = process.env.APP_URL || null;
+if (APP_URL) {
+  const https = require('https');
+  setInterval(() => {
+    https.get(APP_URL, (res) => {
+      console.log('Keep-alive ping:', res.statusCode);
+    }).on('error', (e) => {
+      console.log('Ping failed:', e.message);
+    });
+  }, 10 * 60 * 1000); // every 10 minutes
+}
+
+server.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
 });
